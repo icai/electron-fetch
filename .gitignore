@@ -38,3 +38,4 @@ lib/**/*
 
 # typescript declarations
 !lib/**/*.d.ts
+package-lock.json
