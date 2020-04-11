@@ -1,275 +1,387 @@
+
 /**
- * headers.js
+ * Headers.js
  *
  * Headers class offers convenient helpers
  */
 
-import { checkInvalidHeaderChar, checkIsHttpToken } from './common.js'
+const invalidTokenRegex = /[^`\-\w!#$%&'*+.|~]/;
+const invalidHeaderCharRegex = /[^\t\u0020-\u007E\u0080-\u00FF]/;
 
-function sanitizeName (name) {
-  name += ''
-  if (!checkIsHttpToken(name)) {
-    throw new TypeError(`${name} is not a legal HTTP header name`)
-  }
-  return name.toLowerCase()
+function validateName(name) {
+	name = `${name}`;
+	if (invalidTokenRegex.test(name) || name === '') {
+		throw new TypeError(`${name} is not a legal HTTP header name`);
+	}
 }
 
-function sanitizeValue (value) {
-  value += ''
-  if (checkInvalidHeaderChar(value)) {
-    throw new TypeError(`${value} is not a legal HTTP header value`)
-  }
-  return value
+function validateValue(value) {
+	value = `${value}`;
+	if (invalidHeaderCharRegex.test(value)) {
+		throw new TypeError(`${value} is not a legal HTTP header value`);
+	}
 }
 
-const MAP = Symbol('map')
+/**
+ * Find the key in the map object given a header name.
+ *
+ * Returns undefined if not found.
+ *
+ * @param   String  name  Header name
+ * @return  String|Undefined
+ */
+function find(map, name) {
+	name = name.toLowerCase();
+	for (const key in map) {
+		if (key.toLowerCase() === name) {
+			return key;
+		}
+	}
+
+	return undefined;
+}
+
+const MAP = Symbol('map');
 export default class Headers {
-  /**
-   * Headers class
-   *
-   * @param {Object} init Response headers
-   */
-  constructor (init = undefined) {
-    this[MAP] = Object.create(null)
+	/**
+	 * Headers class
+	 *
+	 * @param   Object  headers  Response headers
+	 * @return  Void
+	 */
+	constructor(init = undefined) {
+		this[MAP] = Object.create(null);
 
-    // We don't worry about converting prop to ByteString here as append()
-    // will handle it.
-    if (init == null) {
-      // no op
-    } else if (typeof init === 'object') {
-      const method = init[Symbol.iterator]
-      if (method != null) {
-        if (typeof method !== 'function') {
-          throw new TypeError('Header pairs must be iterable')
-        }
+		if (init instanceof Headers) {
+			const rawHeaders = init.raw();
+			const headerNames = Object.keys(rawHeaders);
 
-        // sequence<sequence<ByteString>>
-        // Note: per spec we have to first exhaust the lists then process them
-        const pairs = []
-        for (const pair of init) {
-          if (typeof pair !== 'object' || typeof pair[Symbol.iterator] !== 'function') {
-            throw new TypeError('Each header pair must be iterable')
-          }
-          pairs.push(Array.from(pair))
-        }
+			for (const headerName of headerNames) {
+				for (const value of rawHeaders[headerName]) {
+					this.append(headerName, value);
+				}
+			}
 
-        for (const pair of pairs) {
-          if (pair.length !== 2) {
-            throw new TypeError('Each header pair must be a name/value tuple')
-          }
-          this.append(pair[0], pair[1])
-        }
-      } else {
-        // record<ByteString, ByteString>
-        for (const key of Object.keys(init)) {
-          const value = init[key]
-          this.append(key, value)
-        }
-      }
-    } else {
-      throw new TypeError('Provided initializer must be an object')
-    }
+			return;
+		}
 
-    Object.defineProperty(this, Symbol.toStringTag, {
-      value: 'Headers',
-      writable: false,
-      enumerable: false,
-      configurable: true
-    })
-  }
+		// We don't worry about converting prop to ByteString here as append()
+		// will handle it.
+		// eslint-disable-next-line no-eq-null, eqeqeq
+		if (init == null) {
+			// No op
+		} else if (typeof init === 'object') {
+			const method = init[Symbol.iterator];
+			// eslint-disable-next-line no-eq-null, eqeqeq
+			if (method != null) {
+				if (typeof method !== 'function') {
+					throw new TypeError('Header pairs must be iterable');
+				}
 
-  /**
-   * Return first header value given name
-   *
-   * @param {string} name Header name
-   * @return {string}
-   */
-  get (name) {
-    const list = this[MAP][sanitizeName(name)]
-    if (!list) {
-      return null
-    }
+				// Sequence<sequence<ByteString>>
+				// Note: per spec we have to first exhaust the lists then process them
+				const pairs = [];
+				for (const pair of init) {
+					if (typeof pair !== 'object' || typeof pair[Symbol.iterator] !== 'function') {
+						throw new TypeError('Each header pair must be iterable');
+					}
 
-    return list.join(',')
-  }
+					pairs.push([...pair]);
+				}
 
-  /**
-   * Iterate over all headers
-   *
-   * @param {function} callback Executed for each item with parameters (value, name, thisArg)
-   * @param {boolean} thisArg `this` context for callback function
-   */
-  forEach (callback, thisArg = undefined) {
-    let pairs = getHeaderPairs(this)
-    let i = 0
-    while (i < pairs.length) {
-      const [name, value] = pairs[i]
-      callback.call(thisArg, value, name, this)
-      pairs = getHeaderPairs(this)
-      i++
-    }
-  }
+				for (const pair of pairs) {
+					if (pair.length !== 2) {
+						throw new TypeError('Each header pair must be a name/value tuple');
+					}
 
-  /**
-   * Overwrite header values given name
-   *
-   * @param {string} name Header name
-   * @param {string|Array.<string|*>|*} value Header value
-   */
-  set (name, value) {
-    this[MAP][sanitizeName(name)] = [sanitizeValue(value)]
-  }
+					this.append(pair[0], pair[1]);
+				}
+			} else {
+				// Record<ByteString, ByteString>
+				for (const key of Object.keys(init)) {
+					const value = init[key];
+					this.append(key, value);
+				}
+			}
+		} else {
+			throw new TypeError('Provided initializer must be an object');
+		}
+	}
 
-  /**
-   * Append a value onto existing header
-   *
-   * @param {string} name Header name
-   * @param {string|Array.<string|*>|*} value Header value
-   */
-  append (name, value) {
-    if (!this.has(name)) {
-      this.set(name, value)
-      return
-    }
+	/**
+	 * Return combined header value given name
+	 *
+	 * @param   String  name  Header name
+	 * @return  Mixed
+	 */
+	get(name) {
+		name = `${name}`;
+		validateName(name);
+		const key = find(this[MAP], name);
+		if (key === undefined) {
+			return null;
+		}
 
-    this[MAP][sanitizeName(name)].push(sanitizeValue(value))
-  }
+		let value = this[MAP][key].join(', ');
+		if (name.toLowerCase() === 'content-encoding') {
+			value = value.toLowerCase();
+		}
 
-  /**
-   * Check for header name existence
-   *
-   * @param {string} name Header name
-   * @return {boolean}
-   */
-  has (name) {
-    return !!this[MAP][sanitizeName(name)]
-  }
+		return value;
+	}
 
-  /**
-   * Delete all header values given name
-   *
-   * @param {string} name Header name
-   */
-  delete (name) {
-    delete this[MAP][sanitizeName(name)]
-  }
+	/**
+	 * Iterate over all headers
+	 *
+	 * @param   Function  callback  Executed for each item with parameters (value, name, thisArg)
+	 * @param   Boolean   thisArg   `this` context for callback function
+	 * @return  Void
+	 */
+	forEach(callback, thisArg = undefined) {
+		let pairs = getHeaders(this);
+		let i = 0;
+		while (i < pairs.length) {
+			const [name, value] = pairs[i];
+			callback.call(thisArg, value, name, this);
+			pairs = getHeaders(this);
+			i++;
+		}
+	}
 
-  /**
-   * Return raw headers (non-spec api)
-   *
-   * @return {Object}
-   */
-  raw () {
-    return this[MAP]
-  }
+	/**
+	 * Overwrite header values given name
+	 *
+	 * @param   String  name   Header name
+	 * @param   String  value  Header value
+	 * @return  Void
+	 */
+	set(name, value) {
+		name = `${name}`;
+		value = `${value}`;
+		validateName(name);
+		validateValue(value);
+		const key = find(this[MAP], name);
+		this[MAP][key !== undefined ? key : name] = [value];
+	}
 
-  /**
-   * Get an iterator on keys.
-   *
-   * @return {Iterator}
-   */
-  keys () {
-    return createHeadersIterator(this, 'key')
-  }
+	/**
+	 * Append a value onto existing header
+	 *
+	 * @param   String  name   Header name
+	 * @param   String  value  Header value
+	 * @return  Void
+	 */
+	append(name, value) {
+		name = `${name}`;
+		value = `${value}`;
+		validateName(name);
+		validateValue(value);
+		const key = find(this[MAP], name);
+		if (key !== undefined) {
+			this[MAP][key].push(value);
+		} else {
+			this[MAP][name] = [value];
+		}
+	}
 
-  /**
-   * Get an iterator on values.
-   *
-   * @return {Iterator}
-   */
-  values () {
-    return createHeadersIterator(this, 'value')
-  }
+	/**
+	 * Check for header name existence
+	 *
+	 * @param   String   name  Header name
+	 * @return  Boolean
+	 */
+	has(name) {
+		name = `${name}`;
+		validateName(name);
+		return find(this[MAP], name) !== undefined;
+	}
 
-  /**
-   * Get an iterator on entries.
-   *
-   * This is the default iterator of the Headers object.
-   *
-   * @return {Iterator}
-   */
-  [Symbol.iterator] () {
-    return createHeadersIterator(this, 'key+value')
-  }
+	/**
+	 * Delete all header values given name
+	 *
+	 * @param   String  name  Header name
+	 * @return  Void
+	 */
+	delete(name) {
+		name = `${name}`;
+		validateName(name);
+		const key = find(this[MAP], name);
+		if (key !== undefined) {
+			delete this[MAP][key];
+		}
+	}
+
+	/**
+	 * Return raw headers (non-spec api)
+	 *
+	 * @return  Object
+	 */
+	raw() {
+		return this[MAP];
+	}
+
+	/**
+	 * Get an iterator on keys.
+	 *
+	 * @return  Iterator
+	 */
+	keys() {
+		return createHeadersIterator(this, 'key');
+	}
+
+	/**
+	 * Get an iterator on values.
+	 *
+	 * @return  Iterator
+	 */
+	values() {
+		return createHeadersIterator(this, 'value');
+	}
+
+	/**
+	 * Get an iterator on entries.
+	 *
+	 * This is the default iterator of the Headers object.
+	 *
+	 * @return  Iterator
+	 */
+	[Symbol.iterator]() {
+		return createHeadersIterator(this, 'key+value');
+	}
 }
-Headers.prototype.entries = Headers.prototype[Symbol.iterator]
+Headers.prototype.entries = Headers.prototype[Symbol.iterator];
 
 Object.defineProperty(Headers.prototype, Symbol.toStringTag, {
-  value: 'HeadersPrototype',
-  writable: false,
-  enumerable: false,
-  configurable: true
-})
+	value: 'Headers',
+	writable: false,
+	enumerable: false,
+	configurable: true
+});
 
-function getHeaderPairs (headers, kind) {
-  if (kind === 'key') return Object.keys(headers[MAP]).sort().map(k => [k])
-  const pairs = []
-  for (const key of Object.keys(headers[MAP]).sort()) {
-    for (const value of headers[MAP][key]) {
-      pairs.push([key, value])
-    }
-  }
-  return pairs
+Object.defineProperties(Headers.prototype, {
+	get: {enumerable: true},
+	forEach: {enumerable: true},
+	set: {enumerable: true},
+	append: {enumerable: true},
+	has: {enumerable: true},
+	delete: {enumerable: true},
+	keys: {enumerable: true},
+	values: {enumerable: true},
+	entries: {enumerable: true}
+});
+
+function getHeaders(headers, kind = 'key+value') {
+	const keys = Object.keys(headers[MAP]).sort();
+	return keys.map(
+		kind === 'key' ?
+			k => k.toLowerCase() :
+			(kind === 'value' ?
+				k => headers[MAP][k].join(', ') :
+				k => [k.toLowerCase(), headers[MAP][k].join(', ')])
+	);
 }
 
-const INTERNAL = Symbol('internal')
+const INTERNAL = Symbol('internal');
 
-function createHeadersIterator (target, kind) {
-  const iterator = Object.create(HeadersIteratorPrototype)
-  iterator[INTERNAL] = {
-    target,
-    kind,
-    index: 0
-  }
-  return iterator
+function createHeadersIterator(target, kind) {
+	const iterator = Object.create(HeadersIteratorPrototype);
+	iterator[INTERNAL] = {
+		target,
+		kind,
+		index: 0
+	};
+	return iterator;
 }
 
 const HeadersIteratorPrototype = Object.setPrototypeOf({
-  next () {
-    // istanbul ignore if
-    if (!this ||
-      Object.getPrototypeOf(this) !== HeadersIteratorPrototype) {
-      throw new TypeError('Value of `this` is not a HeadersIterator')
-    }
+	next() {
+		// istanbul ignore if
+		if (!this ||
+			Object.getPrototypeOf(this) !== HeadersIteratorPrototype) {
+			throw new TypeError('Value of `this` is not a HeadersIterator');
+		}
 
-    const {
-      target,
-      kind,
-      index
-    } = this[INTERNAL]
-    const values = getHeaderPairs(target, kind)
-    const len = values.length
-    if (index >= len) {
-      return {
-        value: undefined,
-        done: true
-      }
-    }
+		const {
+			target,
+			kind,
+			index
+		} = this[INTERNAL];
+		const values = getHeaders(target, kind);
+		const length_ = values.length;
+		if (index >= length_) {
+			return {
+				value: undefined,
+				done: true
+			};
+		}
 
-    const pair = values[index]
-    this[INTERNAL].index = index + 1
+		this[INTERNAL].index = index + 1;
 
-    let result
-    if (kind === 'key') {
-      result = pair[0]
-    } else if (kind === 'value') {
-      result = pair[1]
-    } else {
-      result = pair
-    }
-
-    return {
-      value: result,
-      done: false
-    }
-  }
+		return {
+			value: values[index],
+			done: false
+		};
+	}
 }, Object.getPrototypeOf(
-  Object.getPrototypeOf([][Symbol.iterator]())
-))
+	Object.getPrototypeOf([][Symbol.iterator]())
+));
 
 Object.defineProperty(HeadersIteratorPrototype, Symbol.toStringTag, {
-  value: 'HeadersIterator',
-  writable: false,
-  enumerable: false,
-  configurable: true
-})
+	value: 'HeadersIterator',
+	writable: false,
+	enumerable: false,
+	configurable: true
+});
+
+/**
+ * Export the Headers object in a form that Node.js can consume.
+ *
+ * @param   Headers  headers
+ * @return  Object
+ */
+export function exportNodeCompatibleHeaders(headers) {
+	const object = {__proto__: null, ...headers[MAP]};
+
+	// Http.request() only supports string as Host header. This hack makes
+	// specifying custom Host header possible.
+	const hostHeaderKey = find(headers[MAP], 'Host');
+	if (hostHeaderKey !== undefined) {
+		object[hostHeaderKey] = object[hostHeaderKey][0];
+	}
+
+	return object;
+}
+
+/**
+ * Create a Headers object from an object of headers, ignoring those that do
+ * not conform to HTTP grammar productions.
+ *
+ * @param   Object  obj  Object of headers
+ * @return  Headers
+ */
+export function createHeadersLenient(object) {
+	const headers = new Headers();
+	for (const name of Object.keys(object)) {
+		if (invalidTokenRegex.test(name)) {
+			continue;
+		}
+
+		if (Array.isArray(object[name])) {
+			for (const value of object[name]) {
+				if (invalidHeaderCharRegex.test(value)) {
+					continue;
+				}
+
+				if (headers[MAP][name] === undefined) {
+					headers[MAP][name] = [value];
+				} else {
+					headers[MAP][name].push(value);
+				}
+			}
+		} else if (!invalidHeaderCharRegex.test(object[name])) {
+			headers[MAP][name] = [object[name]];
+		}
+	}
+
+	return headers;
+}

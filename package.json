@@ -1,17 +1,17 @@
 {
-  "name": "electron-fetch",
-  "version": "1.4.0",
+  "name": "@w3cub/electron-fetch",
+  "version": "3.0.0",
   "description": "A light-weight module that brings window.fetch to electron's background process",
   "main": "lib/index.js",
   "module": "lib/index.es.js",
   "types": "index.d.ts",
   "files": [
-    "lib/index.js",
-    "lib/index.es.js",
-    "index.d.ts"
+    "src/**/*",
+    "dist/**/*",
+    "types/**/*.d.ts"
   ],
   "engines": {
-    "node": ">=6"
+    "node": ">=10.0.0"
   },
   "scripts": {
     "build": "cross-env BABEL_ENV=rollup rollup -c",
@@ -27,7 +27,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/arantes555/electron-fetch.git"
+    "url": "https://github.com/icai/electron-fetch.git"
   },
   "keywords": [
     "fetch",
@@ -35,44 +35,45 @@
     "promise",
     "electron"
   ],
-  "author": "Mehdi Kouhen",
+  "author": "Terry Cai",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/arantes555/electron-fetch/issues"
+    "url": "https://github.com/icai/electron-fetch/issues"
   },
-  "homepage": "https://github.com/arantes555/electron-fetch",
+  "homepage": "https://github.com/icai/electron-fetch",
   "devDependencies": {
-    "@babel/core": "^7.7.2",
-    "@babel/preset-env": "^7.7.1",
-    "@babel/register": "^7.7.0",
-    "babel-eslint": "^10.0.3",
-    "babel-plugin-istanbul": "^5.2.0",
+    "@babel/core": "^7.9.0",
+    "@babel/preset-env": "^7.9.5",
+    "@babel/register": "^7.9.0",
+    "babel-eslint": "^10.1.0",
+    "babel-plugin-istanbul": "^6.0.0",
     "basic-auth-parser": "0.0.2",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
-    "codecov": "^3.6.1",
-    "cross-env": "^6.0.3",
-    "electron": "6.1.4",
-    "electron-mocha": "^8.1.2",
+    "codecov": "^3.6.5",
+    "cross-env": "^7.0.2",
+    "electron": "8.2.1",
+    "electron-mocha": "^8.2.1",
     "form-data": "^3.0.0",
     "is-builtin-module": "^3.0.0",
     "istanbul-api": "^2.1.6",
-    "istanbul-lib-coverage": "^2.0.5",
-    "mocha": "^6.2.2",
-    "nyc": "^14.1.1",
+    "istanbul-lib-coverage": "^3.0.0",
+    "mocha": "^7.1.1",
+    "nyc": "^15.0.1",
     "parted": "^0.1.1",
-    "promise": "^8.0.3",
+    "promise": "^8.1.0",
     "proxy": "^1.0.1",
     "resumer": "0.0.0",
-    "rollup": "^1.27.0",
-    "rollup-plugin-babel": "^4.3.3",
-    "standard": "^14.3.1",
-    "ts-node": "^8.5.0",
-    "typescript": "^3.7.2",
-    "whatwg-url": "^7.1.0",
+    "rollup": "^2.6.0",
+    "rollup-plugin-babel": "^4.4.0",
+    "standard": "^14.3.3",
+    "ts-node": "^8.8.2",
+    "typescript": "^3.8.3",
+    "whatwg-url": "^8.0.0",
     "xvfb-maybe": "^0.2.1"
   },
   "dependencies": {
-    "encoding": "^0.1.12"
+    "data-uri-to-buffer": "^3.0.0",
+    "fetch-blob": "^1.0.5"
   }
 }

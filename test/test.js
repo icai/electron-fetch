@@ -16,7 +16,7 @@ import assert from 'assert'
 import { TestProxy, TestServer } from './server'
 // test subjects
 import fetch, { FetchError, Headers, Request, Response } from '../src/'
-import FetchErrorOrig from '../src/fetch-error.js'
+import FetchErrorOrig from '../src/errors/fetch-error.js'
 import HeadersOrig from '../src/headers.js'
 import RequestOrig from '../src/request.js'
 import ResponseOrig from '../src/response.js'

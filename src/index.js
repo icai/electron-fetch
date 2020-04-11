@@ -6,22 +6,17 @@
 
 // eslint-disable-next-line node/no-deprecated-api
 import { resolve as resolveURL } from 'url'
-import * as http from 'http'
-import * as https from 'https'
-import * as zlib from 'zlib'
-import { PassThrough } from 'stream'
+import Stream, {PassThrough, pipeline as pump} from 'stream';
 
 import { writeToStream } from './body'
 import Response from './response'
 import Headers from './headers'
 import Request, { getNodeRequestOptions } from './request'
-import FetchError from './fetch-error'
+import FetchError from './errors/fetch-error';
+import AbortError from './errors/abort-error';
 
-let electron
-// istanbul ignore else
-if (process.versions.electron) {
-  electron = require('electron')
-}
+let electron = require('electron');
+
 const isReady = (!electron || electron.app.isReady())
   ? Promise.resolve()
   : new Promise(resolve => electron.app.once('ready', resolve))
@@ -38,37 +33,79 @@ export default function fetch (url, opts = {}) {
   return isReady.then(() => new Promise((resolve, reject) => {
     // build request object
     const request = new Request(url, opts)
+
     const options = getNodeRequestOptions(request)
 
-    const send = request.useElectronNet
-      ? electron.net.request
-      : (options.protocol === 'https:' ? https : http).request
-
-    // http.request only support string as host header, this hack make custom host header possible
+    const send = electron.net.request    // http.request only support string as host header, this hack make custom host header possible
     if (options.headers.host) {
       options.headers.host = options.headers.host[0]
     }
 
     // send request
     let headers
-    if (request.useElectronNet) {
-      headers = options.headers
-      delete options.headers
-      options.session = opts.session || electron.session.defaultSession // we have to use a persistent session here, because of https://github.com/electron/electron/issues/13587
-    } else {
-      if (opts.agent) options.agent = opts.agent
-    }
+
+    headers = options.headers
+    delete options.headers
+    options.session = opts.session || electron.session.defaultSession // we have to use a persistent session here, because of https://github.com/electron/electron/issues/13587
+
+		const {signal} = request;
+		let response = null;
+
+		const abort = () => {
+			const error = new AbortError('The operation was aborted.');
+			reject(error);
+			if (request.body && request.body instanceof Stream.Readable) {
+				request.body.destroy(error);
+			}
+
+			if (!response || !response.body) {
+				return;
+			}
+
+			response.body.emit('error', error);
+		};
+
+		if (signal && signal.aborted) {
+			abort();
+			return;
+		}
+
+		const abortAndFinalize = () => {
+			abort();
+			finalize();
+		};
+
+		
+		if (signal) {
+			signal.addEventListener('abort', abortAndFinalize);
+		}
+
+		function finalize() {
+			req.abort();
+			if (signal) {
+				signal.removeEventListener('abort', abortAndFinalize);
+			}
+		}
+
+		if (request.timeout) {
+			req.setTimeout(request.timeout, () => {
+				finalize();
+				reject(new FetchError(`network timeout at: ${request.url}`, 'request-timeout'));
+			});
+		}
+
+
+    // Send request
     const req = send(options)
-    if (request.useElectronNet) {
-      for (const headerName in headers) {
-        if (typeof headers[headerName] === 'string') req.setHeader(headerName, headers[headerName])
-        else {
-          for (const headerValue of headers[headerName]) {
-            req.setHeader(headerName, headerValue)
-          }
+    for (const headerName in headers) {
+      if (typeof headers[headerName] === 'string') req.setHeader(headerName, headers[headerName])
+      else {
+        for (const headerValue of headers[headerName]) {
+          req.setHeader(headerName, headerValue)
         }
       }
     }
+
     let reqTimeout
 
     if (request.timeout) {
@@ -78,17 +115,15 @@ export default function fetch (url, opts = {}) {
       }, request.timeout)
     }
 
-    if (request.useElectronNet) {
-      // handle authenticating proxies
-      req.on('login', (authInfo, callback) => {
-        if (opts.user && opts.password) {
-          callback(opts.user, opts.password)
-        } else {
-          req.abort()
-          reject(new FetchError(`login event received from ${authInfo.host} but no credentials provided`, 'proxy', { code: 'PROXY_AUTH_FAILED' }))
-        }
-      })
-    }
+    // handle authenticating proxies
+    req.on('login', (authInfo, callback) => {
+      if (opts.user && opts.password) {
+        callback(opts.user, opts.password)
+      } else {
+        req.abort()
+        reject(new FetchError(`login event received from ${authInfo.host} but no credentials provided`, 'proxy', { code: 'PROXY_AUTH_FAILED' }))
+      }
+    })
 
     req.on('error', err => {
       clearTimeout(reqTimeout)
@@ -144,10 +179,16 @@ export default function fetch (url, opts = {}) {
         headers.set('location', resolveURL(request.url, headers.get('location')))
       }
 
-      // prepare response
-      let body = new PassThrough()
-      res.on('error', err => body.emit('error', err))
-      res.pipe(body)
+      // Prepare response
+			res.once('end', () => {
+				if (signal) {
+					signal.removeEventListener('abort', abortAndFinalize);
+				}
+			});
+			let body = pump(res, new PassThrough(), error => {
+				reject(error);
+			});
+
       const responseOptions = {
         url: request.url,
         status: res.statusCode,
@@ -158,49 +199,7 @@ export default function fetch (url, opts = {}) {
         useElectronNet: request.useElectronNet
       }
 
-      // HTTP-network fetch step 16.1.2
-      const codings = headers.get('Content-Encoding')
-
-      // HTTP-network fetch step 16.1.3: handle content codings
-
-      // in following scenarios we ignore compression support
-      // 1. running on Electron/net module (it manages it for us)
-      // 2. HEAD request
-      // 3. no Content-Encoding header
-      // 4. no content response (204)
-      // 5. content not modified response (304)
-      if (!request.useElectronNet && request.method !== 'HEAD' && codings !== null &&
-        res.statusCode !== 204 && res.statusCode !== 304) {
-        // Be less strict when decoding compressed responses, since sometimes
-        // servers send slightly invalid responses that are still accepted
-        // by common browsers.
-        // Always using Z_SYNC_FLUSH is what cURL does.
-        // /!\ This is disabled for now, because it seems broken in recent node
-        // const zlibOptions = {
-        //   flush: zlib.Z_SYNC_FLUSH,
-        //   finishFlush: zlib.Z_SYNC_FLUSH
-        // }
-
-        if (codings === 'gzip' || codings === 'x-gzip') { // for gzip
-          body = body.pipe(zlib.createGunzip())
-        } else if (codings === 'deflate' || codings === 'x-deflate') { // for deflate
-          // handle the infamous raw deflate response from old servers
-          // a hack for old IIS and Apache servers
-          const raw = res.pipe(new PassThrough())
-          return raw.once('data', chunk => {
-            // see http://stackoverflow.com/questions/37519828
-            if ((chunk[0] & 0x0F) === 0x08) {
-              body = body.pipe(zlib.createInflate())
-            } else {
-              body = body.pipe(zlib.createInflateRaw())
-            }
-            const response = new Response(body, responseOptions)
-            resolve(response)
-          })
-        }
-      }
-
-      const response = new Response(body, responseOptions)
+      response = new Response(body, responseOptions)
       resolve(response)
     })
 
@@ -214,7 +213,7 @@ export default function fetch (url, opts = {}) {
  * @param {number} code Status code
  * @return {boolean}
  */
-fetch.isRedirect = code => code === 301 || code === 302 || code === 303 || code === 307 || code === 308
+fetch.isRedirect = code => [301, 302, 303, 307, 308].includes(code);
 
 export {
   Headers,
