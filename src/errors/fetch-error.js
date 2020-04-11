@@ -21,21 +21,21 @@ const netErrorMap = {
   ERR_CONTENT_DECODING_INIT_FAILED: 'Z_DATA_ERROR'
 }
 
-export default function FetchError (message, type, systemError) {
+export default function FetchError(message, type, systemError) {
   Error.call(this, message)
   const regex = /^.*net::(.*)/
   if (regex.test(message)) {
-	  let errorCode = regex.exec(message)[1]
-	  // istanbul ignore else
-	  if (Object.prototype.hasOwnProperty.call(netErrorMap, errorCode)) errorCode = netErrorMap[errorCode]
-	  systemError = { code: errorCode }
+    let errorCode = regex.exec(message)[1]
+    // istanbul ignore else
+    if (Object.prototype.hasOwnProperty.call(netErrorMap, errorCode)) errorCode = netErrorMap[errorCode]
+    systemError = { code: errorCode }
   }
   this.message = message
   this.type = type
 
   // when err.type is `system`, err.code contains system error code
   if (systemError) {
-	  this.code = this.errno = systemError.code
+    this.code = this.errno = systemError.code
   }
 
   // hide custom error implementation details from end-users

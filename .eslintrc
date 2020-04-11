@@ -2,5 +2,34 @@
   "extends": [
     "standard"
   ],
-  "parser": "babel-eslint"
+  "parser": "babel-eslint",
+  "rules": {
+    "complexity": 0,
+    "promise/prefer-await-to-then": 0,
+    "no-mixed-operators": 0,
+    "no-negated-condition": 0,
+    "unicorn/prevent-abbreviations": 0
+  },
+  "ignores": [
+    "dist",
+    "index.d.ts"
+  ],
+  "overrides": [
+    {
+      "files": "test/**/*.js",
+      "rules": {
+        "max-nested-callbacks": 0,
+        "no-unused-expressions": 0,
+        "new-cap": 0,
+        "guard-for-in": 0
+      }
+    },
+    {
+      "files": "example.js",
+      "rules": {
+        "import/no-extraneous-dependencies": 0
+      }
+    }
+  ]
+
 }
