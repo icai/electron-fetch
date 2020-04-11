@@ -4,7 +4,7 @@
  * Object type checks.
  */
 
-const NAME = Symbol.toStringTag;
+const NAME = Symbol.toStringTag
 
 /**
  * Check if `obj` is a URLSearchParams object
@@ -13,18 +13,18 @@ const NAME = Symbol.toStringTag;
  * @param  {*} obj
  * @return {boolean}
  */
-export function isURLSearchParams(object) {
-	return (
-		typeof object === 'object' &&
-		typeof object.append === 'function' &&
-		typeof object.delete === 'function' &&
-		typeof object.get === 'function' &&
-		typeof object.getAll === 'function' &&
-		typeof object.has === 'function' &&
-		typeof object.set === 'function' &&
-		typeof object.sort === 'function' &&
-		object[NAME] === 'URLSearchParams'
-	);
+export function isURLSearchParams (object) {
+  return (
+    typeof object === 'object' &&
+    typeof object.append === 'function' &&
+    typeof object.delete === 'function' &&
+    typeof object.get === 'function' &&
+    typeof object.getAll === 'function' &&
+    typeof object.has === 'function' &&
+    typeof object.set === 'function' &&
+    typeof object.sort === 'function' &&
+    object[NAME] === 'URLSearchParams'
+  )
 }
 
 /**
@@ -33,15 +33,15 @@ export function isURLSearchParams(object) {
  * @param  {*} obj
  * @return {boolean}
  */
-export function isBlob(object) {
-	return (
-		typeof object === 'object' &&
-		typeof object.arrayBuffer === 'function' &&
-		typeof object.type === 'string' &&
-		typeof object.stream === 'function' &&
-		typeof object.constructor === 'function' &&
-		/^(Blob|File)$/.test(object[NAME])
-	);
+export function isBlob (object) {
+  return (
+    typeof object === 'object' &&
+    typeof object.arrayBuffer === 'function' &&
+    typeof object.type === 'string' &&
+    typeof object.stream === 'function' &&
+    typeof object.constructor === 'function' &&
+    /^(Blob|File)$/.test(object[NAME])
+  )
 }
 
 /**
@@ -50,11 +50,11 @@ export function isBlob(object) {
  * @param  {*} obj
  * @return {boolean}
  */
-export function isAbortSignal(object) {
-	return (
-		typeof object === 'object' &&
-		object[NAME] === 'AbortSignal'
-	);
+export function isAbortSignal (object) {
+  return (
+    typeof object === 'object' &&
+    object[NAME] === 'AbortSignal'
+  )
 }
 
 /**
@@ -63,8 +63,8 @@ export function isAbortSignal(object) {
  * @param  {*} obj
  * @return {boolean}
  */
-export function isArrayBuffer(object) {
-	return object[NAME] === 'ArrayBuffer';
+export function isArrayBuffer (object) {
+  return object[NAME] === 'ArrayBuffer'
 }
 
 /**
@@ -73,6 +73,6 @@ export function isArrayBuffer(object) {
  * @param  {*} obj
  * @return {boolean}
  */
-export function isAbortError(object) {
-	return object[NAME] === 'AbortError';
+export function isAbortError (object) {
+  return object[NAME] === 'AbortError'
 }

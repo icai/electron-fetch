@@ -6,16 +6,16 @@
 
 // eslint-disable-next-line node/no-deprecated-api
 import { resolve as resolveURL } from 'url'
-import Stream, {PassThrough, pipeline as pump} from 'stream';
+import Stream, { PassThrough, pipeline as pump } from 'stream'
 
 import { writeToStream } from './body'
 import Response from './response'
 import Headers from './headers'
 import Request, { getNodeRequestOptions } from './request'
-import FetchError from './errors/fetch-error';
-import AbortError from './errors/abort-error';
+import FetchError from './errors/fetch-error'
+import AbortError from './errors/abort-error'
 
-let electron = require('electron');
+const electron = require('electron')
 
 const isReady = (!electron || electron.app.isReady())
   ? Promise.resolve()
@@ -36,7 +36,7 @@ export default function fetch (url, opts = {}) {
 
     const options = getNodeRequestOptions(request)
 
-    const send = electron.net.request    // http.request only support string as host header, this hack make custom host header possible
+    const send = electron.net.request // http.request only support string as host header, this hack make custom host header possible
     if (options.headers.host) {
       options.headers.host = options.headers.host[0]
     }
@@ -48,52 +48,50 @@ export default function fetch (url, opts = {}) {
     delete options.headers
     options.session = opts.session || electron.session.defaultSession // we have to use a persistent session here, because of https://github.com/electron/electron/issues/13587
 
-		const {signal} = request;
-		let response = null;
+    const { signal } = request
+    let response = null
 
-		const abort = () => {
-			const error = new AbortError('The operation was aborted.');
-			reject(error);
-			if (request.body && request.body instanceof Stream.Readable) {
-				request.body.destroy(error);
-			}
+    const abort = () => {
+      const error = new AbortError('The operation was aborted.')
+      reject(error)
+      if (request.body && request.body instanceof Stream.Readable) {
+        request.body.destroy(error)
+      }
 
-			if (!response || !response.body) {
-				return;
-			}
+      if (!response || !response.body) {
+        return
+      }
 
-			response.body.emit('error', error);
-		};
+      response.body.emit('error', error)
+    }
 
-		if (signal && signal.aborted) {
-			abort();
-			return;
-		}
+    if (signal && signal.aborted) {
+      abort()
+      return
+    }
 
-		const abortAndFinalize = () => {
-			abort();
-			finalize();
-		};
+    const abortAndFinalize = () => {
+      abort()
+      finalize()
+    }
 
-		
-		if (signal) {
-			signal.addEventListener('abort', abortAndFinalize);
-		}
+    if (signal) {
+      signal.addEventListener('abort', abortAndFinalize)
+    }
 
-		function finalize() {
-			req.abort();
-			if (signal) {
-				signal.removeEventListener('abort', abortAndFinalize);
-			}
-		}
+    function finalize () {
+      req.abort()
+      if (signal) {
+        signal.removeEventListener('abort', abortAndFinalize)
+      }
+    }
 
-		if (request.timeout) {
-			req.setTimeout(request.timeout, () => {
-				finalize();
-				reject(new FetchError(`network timeout at: ${request.url}`, 'request-timeout'));
-			});
-		}
-
+    if (request.timeout) {
+      req.setTimeout(request.timeout, () => {
+        finalize()
+        reject(new FetchError(`network timeout at: ${request.url}`, 'request-timeout'))
+      })
+    }
 
     // Send request
     const req = send(options)
@@ -180,14 +178,14 @@ export default function fetch (url, opts = {}) {
       }
 
       // Prepare response
-			res.once('end', () => {
-				if (signal) {
-					signal.removeEventListener('abort', abortAndFinalize);
-				}
-			});
-			let body = pump(res, new PassThrough(), error => {
-				reject(error);
-			});
+      res.once('end', () => {
+        if (signal) {
+          signal.removeEventListener('abort', abortAndFinalize)
+        }
+      })
+      const body = pump(res, new PassThrough(), error => {
+        reject(error)
+      })
 
       const responseOptions = {
         url: request.url,
@@ -213,7 +211,7 @@ export default function fetch (url, opts = {}) {
  * @param {number} code Status code
  * @return {boolean}
  */
-fetch.isRedirect = code => [301, 302, 303, 307, 308].includes(code);
+fetch.isRedirect = code => [301, 302, 303, 307, 308].includes(code)
 
 export {
   Headers,
