@@ -1,12 +1,13 @@
 {
   "name": "@w3cub/electron-fetch",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "A light-weight module that brings window.fetch to electron's background process",
   "main": "lib/index.js",
   "module": "lib/index.es.js",
   "types": "index.d.ts",
   "files": [
     "src/**/*",
+    "lib/**/*",
     "dist/**/*",
     "types/**/*.d.ts"
   ],
