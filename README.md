@@ -47,7 +47,7 @@ Why not simply use node-fetch? Well, Electron's `net` module does a better job t
 ## Install
 
 ```sh
-$ npm install electron-fetch --save
+$ npm i @w3cub/electron-fetch --save
 ```
 
 
