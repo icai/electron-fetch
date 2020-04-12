@@ -238,7 +238,7 @@ export function getNodeRequestOptions(request) {
 
   // HTTP-network-or-cache fetch step 2.11
   if (!headers.has('User-Agent')) {
-    headers.set('User-Agent', 'electron-fetch/3.0 (+https://github.com/icai/electron-fetch)')
+    headers.set('User-Agent', 'electron-fetch/3.0 electron (+https://github.com/icai/electron-fetch)')
   }
 
   // HTTP-network-or-cache fetch step 2.15

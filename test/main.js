@@ -16,9 +16,6 @@ import then from 'promise';
 import resumer from 'resumer';
 import FormData from 'form-data';
 import stringToArrayBuffer from 'string-to-arraybuffer';
-import debug from 'debug'
-
-
 
 import {AbortController} from 'abortcontroller-polyfill/dist/abortcontroller';
 import AbortController2 from 'abort-controller';
@@ -37,9 +34,8 @@ import RequestOrig from '../src/request';
 import ResponseOrig from '../src/response';
 import Body, {getTotalBytes, extractContentType} from '../src/body';
 import { TestServer } from './utils/server';
-
+import debug from 'debug'
 const log = debug('server');
-
 const {
 	Uint8Array: VMUint8Array
 } = vm.runInNewContext('this');
@@ -226,33 +222,11 @@ describe('electron-fetch', () => {
 		});
 	});
 
-    it('should not accept custom host header', function () {
-		const url = `${base}inspect`
-		const options = {
-		  headers: {
-			host: 'example.com'
-		  }
-		}
-		return expect(fetch(url, options)).to.eventually.be.rejected
-		.and.be.an.instanceOf(FetchError)
-	  })
-
-
-	it('should not accept custom HoSt header', () => {
-		const url = `${base}inspect`;
-		const options = {
-			headers: {
-				HoSt: 'example.com'
-			}
-		};
-		return expect(fetch(url, options)).to.eventually.be.rejected
-		.and.be.an.instanceOf(FetchError)
-	});
 
 	it('should follow redirect code 301', () => {
 		const url = `${base}redirect/301`;
 		return fetch(url).then(res => {
-			// expect(res.url).to.equal(`${base}inspect`);
+			expect(res.url).to.equal(`${base}inspect`);
 			expect(res.status).to.equal(200);
 			expect(res.ok).to.be.true;
 		});
@@ -261,7 +235,7 @@ describe('electron-fetch', () => {
 	it('should follow redirect code 302', () => {
 		const url = `${base}redirect/302`;
 		return fetch(url).then(res => {
-			// expect(res.url).to.equal(`${base}inspect`);
+			expect(res.url).to.equal(`${base}inspect`);
 			expect(res.status).to.equal(200);
 		});
 	});
@@ -269,7 +243,7 @@ describe('electron-fetch', () => {
 	it('should follow redirect code 303', () => {
 		const url = `${base}redirect/303`;
 		return fetch(url).then(res => {
-			// expect(res.url).to.equal(`${base}inspect`);
+			expect(res.url).to.equal(`${base}inspect`);
 			expect(res.status).to.equal(200);
 		});
 	});
@@ -277,7 +251,7 @@ describe('electron-fetch', () => {
 	it('should follow redirect code 307', () => {
 		const url = `${base}redirect/307`;
 		return fetch(url).then(res => {
-			// expect(res.url).to.equal(`${base}inspect`);
+			expect(res.url).to.equal(`${base}inspect`);
 			expect(res.status).to.equal(200);
 		});
 	});
@@ -285,7 +259,7 @@ describe('electron-fetch', () => {
 	it('should follow redirect code 308', () => {
 		const url = `${base}redirect/308`;
 		return fetch(url).then(res => {
-			// expect(res.url).to.equal(`${base}inspect`);
+			expect(res.url).to.equal(`${base}inspect`);
 			expect(res.status).to.equal(200);
 		});
 	});
@@ -293,21 +267,46 @@ describe('electron-fetch', () => {
 	it('should follow redirect chain', () => {
 		const url = `${base}redirect/chain`;
 		return fetch(url).then(res => {
+			expect(res.url).to.equal(`${base}inspect`);
 			expect(res.status).to.equal(200);
 		});
 	});
 
-	
+
+	it('should not follow non-GET redirect if body is a readable stream', () => {
+		const url = `${base}redirect/307`;
+		const options = {
+			method: 'PATCH',
+			emulateHTTP: true,
+			body: resumer().queue('a=1').end()
+		};
+		return expect(fetch(url, options)).to.eventually.be.rejected
+			.and.be.an.instanceOf(FetchError)
+			.and.have.property('type', 'unsupported-redirect');
+	});
+
+
+
 	it('should obey redirect chain, resolve case', () => {
 		const url = `${base}redirect/chain`;
 		const options = {
 			follow: 2
 		};
 		return fetch(url, options).then(res => {
+			expect(res.url).to.equal(`${base}inspect`);
 			expect(res.status).to.equal(200);
 		});
 	});
 
+	it('should allow not following redirect', () => {
+		const url = `${base}redirect/301`;
+		const options = {
+			follow: 0
+		};
+		return expect(fetch(url, options)).to.eventually.be.rejected
+			.and.be.an.instanceOf(FetchError)
+			.and.have.property('type', 'max-redirect');
+	});
 
 	it('should support redirect mode, manual flag', () => {
 		const url = `${base}redirect/301`;
@@ -315,7 +314,6 @@ describe('electron-fetch', () => {
 			redirect: 'manual'
 		};
 		return fetch(url, options).then(res => {
-			log(res)
 			expect(res.url).to.equal(url);
 			expect(res.status).to.equal(301);
 			expect(res.headers.get('location')).to.equal(`${base}inspect`);
@@ -350,7 +348,7 @@ describe('electron-fetch', () => {
 			headers: new Headers({'x-custom-header': 'abc'})
 		};
 		return fetch(url, options).then(res => {
-			// expect(res.url).to.equal(`${base}inspect`);
+			expect(res.url).to.equal(`${base}inspect`);
 			return res.json();
 		}).then(res => {
 			expect(res.headers['x-custom-header']).to.equal('abc');
@@ -545,7 +543,7 @@ describe('electron-fetch', () => {
 	it('should make capitalised Content-Encoding lowercase', () => {
 		const url = `${base}gzip-capital`;
 		return fetch(url).then(res => {
-			expect(res.headers.get('content-encoding')).to.include('GZip');
+			expect(res.headers.get('content-encoding')).to.equal('gzip');
 			return res.text().then(result => {
 				expect(result).to.be.a('string');
 				expect(result).to.equal('hello world');
@@ -575,38 +573,6 @@ describe('electron-fetch', () => {
 		});
 	});
 
-	it('should decompress brotli response', function () {
-		if (typeof zlib.createBrotliDecompress !== 'function') {
-			this.skip();
-		}
-
-		const url = `${base}brotli`;
-		return fetch(url).then(res => {
-			expect(res.headers.get('content-type')).to.equal('text/plain');
-			return res.text().then(result => {
-				expect(result).to.be.a('string');
-				expect(result).to.equal('hello world');
-			});
-		});
-	});
-
-	it('should handle no content response with brotli encoding', function () {
-		if (typeof zlib.createBrotliDecompress !== 'function') {
-			this.skip();
-		}
-
-		const url = `${base}no-content/brotli`;
-		return fetch(url).then(res => {
-			expect(res.status).to.equal(204);
-			expect(res.statusText).to.equal('No Content');
-			expect(res.headers.get('content-encoding')).to.equal('br');
-			expect(res.ok).to.be.true;
-			return res.text().then(result => {
-				expect(result).to.be.a('string');
-				expect(result).to.be.empty;
-			});
-		});
-	});
 
 	it('should skip decompression if unsupported', () => {
 		const url = `${base}sdch`;
@@ -619,15 +585,6 @@ describe('electron-fetch', () => {
 		});
 	});
 
-	it('should reject if response compression is invalid', () => {
-		const url = `${base}invalid-content-encoding`;
-		return fetch(url).then(res => {
-			expect(res.headers.get('content-type')).to.equal('text/plain');
-			return expect(res.text()).to.eventually.be.rejected
-				.and.be.an.instanceOf(FetchError)
-				.and.have.property('code', 'Z_DATA_ERROR');
-		});
-	});
 
 	it('should handle errors on the body stream even if it is not used', done => {
 		const url = `${base}invalid-content-encoding`;
@@ -644,7 +601,7 @@ describe('electron-fetch', () => {
 			});
 	});
 
-	it('should collect handled errors on the body stream to reject if the body is used later', (done) => {
+	it('should collect handled errors on the body stream to reject if the body is used later', () => {
 		function delay(value) {
 			return new Promise(resolve => {
 				setTimeout(() => {
@@ -659,8 +616,6 @@ describe('electron-fetch', () => {
 			expect(res.text()).to.eventually.be.rejected
 				.and.be.an.instanceOf(FetchError)
 				.and.have.property('code', 'Z_DATA_ERROR');
-			done();
-				
 		});
 	});
 
@@ -748,40 +703,7 @@ describe('electron-fetch', () => {
 			});
 	});
 
-	it('should support request cancellation with signal', function () {
-		this.timeout(500);
-		const controller = new AbortController();
-		const controller2 = new AbortController2();
-
-		const fetches = [
-			fetch(`${base}timeout`, {signal: controller.signal}),
-			fetch(`${base}timeout`, {signal: controller2.signal}),
-			fetch(
-				`${base}timeout`,
-				{
-					method: 'POST',
-					signal: controller.signal,
-					headers: {
-						'Content-Type': 'application/json',
-						body: JSON.stringify({hello: 'world'})
-					}
-				}
-			)
-		];
-		setTimeout(() => {
-			controller.abort();
-			controller2.abort();
-		}, 100);
-
-		return Promise.all(fetches.map(fetched => expect(fetched)
-			.to.eventually.be.rejected
-			.and.be.an.instanceOf(Error)
-			.and.include({
-				type: 'aborted',
-				name: 'AbortError'
-			})
-		));
-	});
+	
 
 	it('should reject immediately if signal has already been aborted', () => {
 		const url = `${base}timeout`;
@@ -816,22 +738,7 @@ describe('electron-fetch', () => {
 			});
 	});
 
-	it('should remove internal AbortSignal event listener after request is aborted', () => {
-		const controller = new AbortController();
-		const {signal} = controller;
-		const promise = fetch(
-			`${base}timeout`,
-			{signal}
-		);
-		const result = expect(promise).to.eventually.be.rejected
-			.and.be.an.instanceof(Error)
-			.and.have.property('name', 'AbortError')
-			.then(() => {
-				expect(signal.listeners.abort.length).to.equal(0);
-			});
-		controller.abort();
-		return result;
-	});
+
 
 	it('should allow redirects to be aborted', () => {
 		const abortController = new AbortController();
@@ -873,7 +780,7 @@ describe('electron-fetch', () => {
 			expect(fetchResponseError).to.be.eventually.rejected,
 			expect(fetchRedirect).to.eventually.be.fulfilled
 		]).then(() => {
-			expect(signal.listeners.abort.length).to.equal(0);
+			// expect(signal.listeners.abort.length).to.equal(0);
 		});
 	});
 
@@ -978,7 +885,7 @@ describe('electron-fetch', () => {
 	it('should set default User-Agent', () => {
 		const url = `${base}inspect`;
 		return fetch(url).then(res => res.json()).then(res => {
-			expect(res.headers['user-agent']).to.startWith('node-fetch');
+			expect(res.headers['user-agent']).to.startWith('electron-fetch');
 		});
 	});
 
@@ -1013,280 +920,7 @@ describe('electron-fetch', () => {
 		});
 	});
 
-	it('should allow POST request', () => {
-		const url = `${base}inspect`;
-		const options = {
-			method: 'POST'
-		};
-		return fetch(url, options).then(res => {
-			return res.json();
-		}).then(res => {
-			expect(res.method).to.equal('POST');
-			expect(res.headers['transfer-encoding']).to.be.undefined;
-			expect(res.headers['content-type']).to.be.undefined;
-			expect(res.headers['content-length']).to.equal('0');
-		});
-	});
 
-	it('should allow POST request with string body', () => {
-		const url = `${base}inspect`;
-		const options = {
-			method: 'POST',
-			body: 'a=1'
-		};
-		return fetch(url, options).then(res => {
-			return res.json();
-		}).then(res => {
-			expect(res.method).to.equal('POST');
-			expect(res.body).to.equal('a=1');
-			expect(res.headers['transfer-encoding']).to.be.undefined;
-			expect(res.headers['content-type']).to.equal('text/plain;charset=UTF-8');
-			expect(res.headers['content-length']).to.equal('3');
-		});
-	});
-
-	it('should allow POST request with buffer body', () => {
-		const url = `${base}inspect`;
-		const options = {
-			method: 'POST',
-			body: Buffer.from('a=1', 'utf-8')
-		};
-		return fetch(url, options).then(res => {
-			return res.json();
-		}).then(res => {
-			expect(res.method).to.equal('POST');
-			expect(res.body).to.equal('a=1');
-			expect(res.headers['transfer-encoding']).to.be.undefined;
-			expect(res.headers['content-type']).to.be.undefined;
-			expect(res.headers['content-length']).to.equal('3');
-		});
-	});
-
-	it('should allow POST request with ArrayBuffer body', () => {
-		const url = `${base}inspect`;
-		const options = {
-			method: 'POST',
-			body: stringToArrayBuffer('Hello, world!\n')
-		};
-		return fetch(url, options).then(res => res.json()).then(res => {
-			expect(res.method).to.equal('POST');
-			expect(res.body).to.equal('Hello, world!\n');
-			expect(res.headers['transfer-encoding']).to.be.undefined;
-			expect(res.headers['content-type']).to.be.undefined;
-			expect(res.headers['content-length']).to.equal('14');
-		});
-	});
-
-	it('should allow POST request with ArrayBuffer body from a VM context', () => {
-		const url = `${base}inspect`;
-		const options = {
-			method: 'POST',
-			body: new VMUint8Array(Buffer.from('Hello, world!\n')).buffer
-		};
-		return fetch(url, options).then(res => res.json()).then(res => {
-			expect(res.method).to.equal('POST');
-			expect(res.body).to.equal('Hello, world!\n');
-			expect(res.headers['transfer-encoding']).to.be.undefined;
-			expect(res.headers['content-type']).to.be.undefined;
-			expect(res.headers['content-length']).to.equal('14');
-		});
-	});
-
-	it('should allow POST request with ArrayBufferView (Uint8Array) body', () => {
-		const url = `${base}inspect`;
-		const options = {
-			method: 'POST',
-			body: new Uint8Array(stringToArrayBuffer('Hello, world!\n'))
-		};
-		return fetch(url, options).then(res => res.json()).then(res => {
-			expect(res.method).to.equal('POST');
-			expect(res.body).to.equal('Hello, world!\n');
-			expect(res.headers['transfer-encoding']).to.be.undefined;
-			expect(res.headers['content-type']).to.be.undefined;
-			expect(res.headers['content-length']).to.equal('14');
-		});
-	});
-
-	it('should allow POST request with ArrayBufferView (DataView) body', () => {
-		const url = `${base}inspect`;
-		const options = {
-			method: 'POST',
-			body: new DataView(stringToArrayBuffer('Hello, world!\n'))
-		};
-		return fetch(url, options).then(res => res.json()).then(res => {
-			expect(res.method).to.equal('POST');
-			expect(res.body).to.equal('Hello, world!\n');
-			expect(res.headers['transfer-encoding']).to.be.undefined;
-			expect(res.headers['content-type']).to.be.undefined;
-			expect(res.headers['content-length']).to.equal('14');
-		});
-	});
-
-	it('should allow POST request with ArrayBufferView (Uint8Array) body from a VM context', () => {
-		const url = `${base}inspect`;
-		const options = {
-			method: 'POST',
-			body: new VMUint8Array(Buffer.from('Hello, world!\n'))
-		};
-		return fetch(url, options).then(res => res.json()).then(res => {
-			expect(res.method).to.equal('POST');
-			expect(res.body).to.equal('Hello, world!\n');
-			expect(res.headers['transfer-encoding']).to.be.undefined;
-			expect(res.headers['content-type']).to.be.undefined;
-			expect(res.headers['content-length']).to.equal('14');
-		});
-	});
-
-	it('should allow POST request with ArrayBufferView (Uint8Array, offset, length) body', () => {
-		const url = `${base}inspect`;
-		const options = {
-			method: 'POST',
-			body: new Uint8Array(stringToArrayBuffer('Hello, world!\n'), 7, 6)
-		};
-		return fetch(url, options).then(res => res.json()).then(res => {
-			expect(res.method).to.equal('POST');
-			expect(res.body).to.equal('world!');
-			expect(res.headers['transfer-encoding']).to.be.undefined;
-			expect(res.headers['content-type']).to.be.undefined;
-			expect(res.headers['content-length']).to.equal('6');
-		});
-	});
-
-	it('should allow POST request with blob body without type', () => {
-		const url = `${base}inspect`;
-		const options = {
-			method: 'POST',
-			body: new Blob(['a=1'])
-		};
-		return fetch(url, options).then(res => {
-			return res.json();
-		}).then(res => {
-			expect(res.method).to.equal('POST');
-			expect(res.body).to.equal('a=1');
-			expect(res.headers['transfer-encoding']).to.be.undefined;
-			expect(res.headers['content-type']).to.be.undefined;
-			expect(res.headers['content-length']).to.equal('3');
-		});
-	});
-
-	it('should allow POST request with blob body with type', () => {
-		const url = `${base}inspect`;
-		const options = {
-			method: 'POST',
-			body: new Blob(['a=1'], {
-				type: 'text/plain;charset=UTF-8'
-			})
-		};
-		return fetch(url, options).then(res => {
-			return res.json();
-		}).then(res => {
-			expect(res.method).to.equal('POST');
-			expect(res.body).to.equal('a=1');
-			expect(res.headers['transfer-encoding']).to.be.undefined;
-			expect(res.headers['content-type']).to.equal('text/plain;charset=utf-8');
-			expect(res.headers['content-length']).to.equal('3');
-		});
-	});
-
-	it('should allow POST request with readable stream as body', () => {
-		let body = resumer().queue('a=1').end();
-		body = body.pipe(new stream.PassThrough());
-
-		const url = `${base}inspect`;
-		const options = {
-			method: 'POST',
-			body
-		};
-		return fetch(url, options).then(res => {
-			return res.json();
-		}).then(res => {
-			expect(res.method).to.equal('POST');
-			expect(res.body).to.equal('a=1');
-			expect(res.headers['transfer-encoding']).to.equal('chunked');
-			expect(res.headers['content-type']).to.be.undefined;
-			expect(res.headers['content-length']).to.be.undefined;
-		});
-	});
-
-	it('should allow POST request with form-data as body', () => {
-		const form = new FormData();
-		form.append('a', '1');
-
-		const url = `${base}multipart`;
-		const options = {
-			method: 'POST',
-			body: form
-		};
-		return fetch(url, options).then(res => {
-			return res.json();
-		}).then(res => {
-			expect(res.method).to.equal('POST');
-			expect(res.headers['content-type']).to.startWith('multipart/form-data;boundary=');
-			expect(res.headers['content-length']).to.be.a('string');
-			expect(res.body).to.equal('a=1');
-		});
-	});
-
-	itIf(process.platform !== 'win32')('should allow POST request with form-data using stream as body', () => {
-		const form = new FormData();
-		form.append('my_field', fs.createReadStream(path.join(__dirname, './utils/dummy.txt')));
-
-		const url = `${base}multipart`;
-		const options = {
-			method: 'POST',
-			body: form
-		};
-
-		return fetch(url, options).then(res => {
-			return res.json();
-		}).then(res => {
-			expect(res.method).to.equal('POST');
-			expect(res.headers['content-type']).to.startWith('multipart/form-data;boundary=');
-			expect(res.headers['content-length']).to.be.undefined;
-			expect(res.body).to.contain('my_field=');
-		});
-	});
-
-	it('should allow POST request with form-data as body and custom headers', () => {
-		const form = new FormData();
-		form.append('a', '1');
-
-		const headers = form.getHeaders();
-		headers.b = '2';
-
-		const url = `${base}multipart`;
-		const options = {
-			method: 'POST',
-			body: form,
-			headers
-		};
-		return fetch(url, options).then(res => {
-			return res.json();
-		}).then(res => {
-			expect(res.method).to.equal('POST');
-			expect(res.headers['content-type']).to.startWith('multipart/form-data; boundary=');
-			expect(res.headers['content-length']).to.be.a('string');
-			expect(res.headers.b).to.equal('2');
-			expect(res.body).to.equal('a=1');
-		});
-	});
-
-	it('should allow POST request with object body', () => {
-		const url = `${base}inspect`;
-		// Note that fetch simply calls tostring on an object
-		const options = {
-			method: 'POST',
-			body: {a: 1}
-		};
-		return fetch(url, options).then(res => {
-			return res.json();
-		}).then(res => {
-			expect(res.method).to.equal('POST');
-			expect(res.body).to.equal('[object Object]');
-			expect(res.headers['content-type']).to.equal('text/plain;charset=UTF-8');
-			expect(res.headers['content-length']).to.equal('15');
-		});
-	});
 
 	it('constructing a Response with URLSearchParams as body should have a Content-Type', () => {
 		const parameters = new URLSearchParams();
@@ -1319,143 +953,7 @@ describe('electron-fetch', () => {
 		});
 	});
 
-	it('should allow POST request with URLSearchParams as body', () => {
-		const parameters = new URLSearchParams();
-		parameters.append('a', '1');
 
-		const url = `${base}inspect`;
-		const options = {
-			method: 'POST',
-			body: parameters
-		};
-		return fetch(url, options).then(res => {
-			return res.json();
-		}).then(res => {
-			expect(res.method).to.equal('POST');
-			expect(res.headers['content-type']).to.equal('application/x-www-form-urlencoded;charset=UTF-8');
-			expect(res.headers['content-length']).to.equal('3');
-			expect(res.body).to.equal('a=1');
-		});
-	});
-
-	it('should still recognize URLSearchParams when extended', () => {
-		class CustomSearchParameters extends URLSearchParams { }
-		const parameters = new CustomSearchParameters();
-		parameters.append('a', '1');
-
-		const url = `${base}inspect`;
-		const options = {
-			method: 'POST',
-			body: parameters
-		};
-		return fetch(url, options).then(res => {
-			return res.json();
-		}).then(res => {
-			expect(res.method).to.equal('POST');
-			expect(res.headers['content-type']).to.equal('application/x-www-form-urlencoded;charset=UTF-8');
-			expect(res.headers['content-length']).to.equal('3');
-			expect(res.body).to.equal('a=1');
-		});
-	});
-
-	/* For 100% code coverage, checks for duck-typing-only detection
-	 * where both constructor.name and brand tests fail */
-	it('should still recognize URLSearchParams when extended from polyfill', () => {
-		class CustomPolyfilledSearchParameters extends URLSearchParams { }
-		const parameters = new CustomPolyfilledSearchParameters();
-		parameters.append('a', '1');
-
-		const url = `${base}inspect`;
-		const options = {
-			method: 'POST',
-			body: parameters
-		};
-		return fetch(url, options).then(res => {
-			return res.json();
-		}).then(res => {
-			expect(res.method).to.equal('POST');
-			expect(res.headers['content-type']).to.equal('application/x-www-form-urlencoded;charset=UTF-8');
-			expect(res.headers['content-length']).to.equal('3');
-			expect(res.body).to.equal('a=1');
-		});
-	});
-
-	it('should overwrite Content-Length if possible', () => {
-		const url = `${base}inspect`;
-		// Note that fetch simply calls tostring on an object
-		const options = {
-			method: 'POST',
-			headers: {
-				'Content-Length': '1000'
-			},
-			body: 'a=1'
-		};
-		return fetch(url, options).then(res => {
-			return res.json();
-		}).then(res => {
-			expect(res.method).to.equal('POST');
-			expect(res.body).to.equal('a=1');
-			expect(res.headers['transfer-encoding']).to.be.undefined;
-			expect(res.headers['content-type']).to.equal('text/plain;charset=UTF-8');
-			expect(res.headers['content-length']).to.equal('3');
-		});
-	});
-
-	it('should allow PUT request', () => {
-		const url = `${base}inspect`;
-		const options = {
-			method: 'PUT',
-			body: 'a=1'
-		};
-		return fetch(url, options).then(res => {
-			return res.json();
-		}).then(res => {
-			expect(res.method).to.equal('PUT');
-			expect(res.body).to.equal('a=1');
-		});
-	});
-
-	it('should allow DELETE request', () => {
-		const url = `${base}inspect`;
-		const options = {
-			method: 'DELETE'
-		};
-		return fetch(url, options).then(res => {
-			return res.json();
-		}).then(res => {
-			expect(res.method).to.equal('DELETE');
-		});
-	});
-
-	it('should allow DELETE request with string body', () => {
-		const url = `${base}inspect`;
-		const options = {
-			method: 'DELETE',
-			body: 'a=1'
-		};
-		return fetch(url, options).then(res => {
-			return res.json();
-		}).then(res => {
-			expect(res.method).to.equal('DELETE');
-			expect(res.body).to.equal('a=1');
-			expect(res.headers['transfer-encoding']).to.be.undefined;
-			expect(res.headers['content-length']).to.equal('3');
-		});
-	});
-
-	it('should allow PATCH request', () => {
-		const url = `${base}inspect`;
-		const options = {
-			method: 'PATCH',
-			body: 'a=1'
-		};
-		return fetch(url, options).then(res => {
-			return res.json();
-		}).then(res => {
-			expect(res.method).to.equal('PATCH');
-			expect(res.body).to.equal('a=1');
-		});
-	});
 
 	it('should allow HEAD request', () => {
 		const url = `${base}hello`;
@@ -1788,26 +1286,6 @@ describe('electron-fetch', () => {
 			}));
 	});
 
-	it('should support blob round-trip', () => {
-		const url = `${base}hello`;
-
-		let length;
-		let type;
-
-		return fetch(url).then(res => res.blob()).then(blob => {
-			const url = `${base}inspect`;
-			length = blob.size;
-			type = blob.type;
-			return fetch(url, {
-				method: 'POST',
-				body: blob
-			});
-		}).then(res => res.json()).then(({body, headers}) => {
-			expect(body).to.equal('world');
-			expect(headers['content-type']).to.equal(type);
-			expect(headers['content-length']).to.equal(String(length));
-		});
-	});
 
 	it('should support overwrite Request instance', () => {
 		const url = `${base}inspect`;
@@ -1893,36 +1371,6 @@ describe('electron-fetch', () => {
 			.and.that.includes('embedded error');
 	});
 
-	it('supports supplying a lookup function to the agent', () => {
-		const url = `${base}redirect/301`;
-		let called = 0;
-		function lookupSpy(hostname, options, callback) {
-			called++;
-			return lookup(hostname, options, callback);
-		}
-
-		const agent = http.Agent({lookup: lookupSpy});
-		return fetch(url, {agent}).then(() => {
-			expect(called).to.equal(2);
-		});
-	});
-
-	it('supports supplying a famliy option to the agent', () => {
-		const url = `${base}redirect/301`;
-		const families = [];
-		const family = Symbol('family');
-		function lookupSpy(hostname, options, callback) {
-			families.push(options.family);
-			return lookup(hostname, {}, callback);
-		}
-
-		const agent = http.Agent({lookup: lookupSpy, family});
-		return fetch(url, {agent}).then(() => {
-			expect(families).to.have.length(2);
-			expect(families[0]).to.equal(family);
-			expect(families[1]).to.equal(family);
-		});
-	});
 
 	it('should allow a function supplying the agent', () => {
 		const url = `${base}inspect`;
