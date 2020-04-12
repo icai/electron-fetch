@@ -372,6 +372,43 @@ Identical to `body.text()`, except instead of always converting to UTF-8, encodi
 
 An operational error in the fetching process. See [ERROR-HANDLING.md][] for more info.
 
+
+### Request cancellation with AbortSignal
+
+You may cancel requests with `AbortController`. A suggested implementation is [`abort-controller`](https://www.npmjs.com/package/abort-controller).
+
+An example of timing out a request after 150ms could be achieved as the following:
+
+```js
+const fetch = require('@w3cub/electron-fetch');
+const AbortController = require('abort-controller');
+
+const controller = new AbortController();
+const timeout = setTimeout(() => {
+	controller.abort();
+}, 150);
+
+fetch('https://example.com', {signal: controller.signal})
+	.then(res => res.json())
+	.then(
+		data => {
+			useData(data);
+		},
+		err => {
+			if (err.name === 'AbortError') {
+                console.log('request was aborted');
+			}
+		}
+	)
+	.finally(() => {
+		clearTimeout(timeout);
+	});
+```
+
+See [test cases](https://github.com/icai/electron-fetch/blob/master/test/test.js) for more examples.
+
+
+
 ## License
 
 MIT
