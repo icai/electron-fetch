@@ -31,7 +31,7 @@ Why not simply use node-fetch? Well, Electron's `net` module does a better job t
 
 ## Difference from client-side fetch
 
-- See [Known Differences](https://github.com/arantes555/electron-fetch/blob/master/LIMITS.md) for details.
+- See [Known Differences](https://github.com/icai/electron-fetch/blob/master/LIMITS.md) for details.
 - If you happen to use a missing feature that `window.fetch` offers, feel free to open an issue.
 - Pull requests are welcomed too!
 
@@ -164,7 +164,7 @@ fetch('http://httpbin.org/post', { method: 'POST', body: form, headers: form.get
 })()
 ```
 
-See [test cases](https://github.com/arantes555/electron-fetch/blob/master/test/test.js) for more examples.
+See [test cases](https://github.com/icai/electron-fetch/blob/master/test/test.js) for more examples.
 
 
 ## API
@@ -420,13 +420,13 @@ Thanks to [github/fetch](https://github.com/github/fetch) for providing a solid 
 Thanks to [node-fetch](https://github.com/bitinn/node-fetch) for providing a solid base to fork.
 
 
-[npm-image]: https://img.shields.io/npm/v/electron-fetch.svg?style=flat-square
-[npm-url]: https://www.npmjs.com/package/electron-fetch
-[travis-image]: https://img.shields.io/travis/arantes555/electron-fetch.svg?style=flat-square
-[travis-url]: https://travis-ci.org/arantes555/electron-fetch
-[codecov-image]: https://img.shields.io/codecov/c/github/arantes555/electron-fetch.svg?style=flat-square
-[codecov-url]: https://codecov.io/gh/arantes555/electron-fetch
-[ERROR-HANDLING.md]: https://github.com/arantes555/electron-fetch/blob/master/ERROR-HANDLING.md
+[npm-image]: https://img.shields.io/npm/v/@w3cub/electron-fetch.svg?style=flat-square
+[npm-url]: https://www.npmjs.com/package/@w3cub/electron-fetch
+[travis-image]: https://img.shields.io/travis/icai/electron-fetch.svg?style=flat-square
+[travis-url]: https://travis-ci.org/icai/electron-fetch
+[codecov-image]: https://img.shields.io/codecov/c/github/icai/electron-fetch.svg?style=flat-square
+[codecov-url]: https://codecov.io/gh/icai/electron-fetch
+[ERROR-HANDLING.md]: https://github.com/icai/electron-fetch/blob/master/ERROR-HANDLING.md
 [whatwg-fetch]: https://fetch.spec.whatwg.org/
 [response-init]: https://fetch.spec.whatwg.org/#responseinit
 [node-readable]: https://nodejs.org/api/stream.html#stream_readable_streams
