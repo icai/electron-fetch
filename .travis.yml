@@ -19,11 +19,16 @@ jobs:
     - node_js: "12"
       env: FORMDATA_VERSION=2.5.1
     - node_js: "12"
+      env: FORMDATA_VERSION=3.0.0
+    - node_js: "12"
       env: ELECTRON_VERSION=4.2.12
     - node_js: "12"
       env: ELECTRON_VERSION=5.0.12
     - node_js: "12"
-      env: ELECTRON_VERSION=6.1.4 # This is the default
+      env: ELECTRON_VERSION=6.1.4
+    - node_js: "12"
+      env: ELECTRON_VERSION=8.2.1 # This is the default
+
 #    - node_js: "12"
 #      env: ELECTRON_VERSION=7.1.1 # Disabled for now, because it is broken
 
