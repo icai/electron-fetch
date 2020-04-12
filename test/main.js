@@ -34,10 +34,7 @@ import RequestOrig from '../src/request'
 import ResponseOrig from '../src/response'
 import Body, { getTotalBytes, extractContentType } from '../src/body'
 import { TestServer } from './utils/server'
-import debug from 'debug'
-
 import chaiTimeout from './utils/chai-timeout'
-const log = debug('server')
 const {
   Uint8Array: VMUint8Array
 } = vm.runInNewContext('this')

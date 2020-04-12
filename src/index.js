@@ -16,11 +16,6 @@ import Headers, { createHeadersLenient } from './headers'
 import Request, { getNodeRequestOptions } from './request'
 import FetchError from './errors/fetch-error'
 import AbortError from './errors/abort-error'
-
-import debug from 'debug'
-
-const log = debug('server')
-
 const electron = require('electron')
 
 const isReady = (!electron || electron.app.isReady())
