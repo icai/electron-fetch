@@ -23,7 +23,7 @@ const streamDestructionSupported = 'destroy' in Stream.Readable.prototype
  * @param  {*} obj
  * @return {boolean}
  */
-function isRequest(object) {
+function isRequest (object) {
   return (
     typeof object === 'object' &&
     typeof object[INTERNALS] === 'object'
@@ -36,7 +36,7 @@ function isRequest(object) {
  * @param  {string} urlStr
  * @return {void}
  */
-function parseURL(urlString) {
+function parseURL (urlString) {
   /*
 		Check whether the URL is absolute or not
 
@@ -58,7 +58,7 @@ function parseURL(urlString) {
  * @return  Void
  */
 export default class Request {
-  constructor(input, init = {}) {
+  constructor (input, init = {}) {
     let parsedURL
 
     // Normalize input and force URL to be encoded as UTF-8 (https://github.com/bitinn/node-fetch/issues/245)
@@ -139,23 +139,23 @@ export default class Request {
     this.highWaterMark = init.highWaterMark || input.highWaterMark
   }
 
-  get method() {
+  get method () {
     return this[INTERNALS].method
   }
 
-  get url() {
+  get url () {
     return formatUrl(this[INTERNALS].parsedURL)
   }
 
-  get headers() {
+  get headers () {
     return this[INTERNALS].headers
   }
 
-  get redirect() {
+  get redirect () {
     return this[INTERNALS].redirect
   }
 
-  get signal() {
+  get signal () {
     return this[INTERNALS].signal
   }
 
@@ -164,7 +164,7 @@ export default class Request {
 	 *
 	 * @return  Request
 	 */
-  clone() {
+  clone () {
     return new Request(this)
   }
 }
@@ -193,7 +193,7 @@ Object.defineProperties(Request.prototype, {
  * @param   Request  A Request instance
  * @return  Object   The options object to be passed to http.request
  */
-export function getNodeRequestOptions(request) {
+export function getNodeRequestOptions (request) {
   const { parsedURL } = request[INTERNALS]
   const headers = new Headers(request[INTERNALS].headers)
 

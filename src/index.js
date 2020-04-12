@@ -7,23 +7,21 @@
 // eslint-disable-next-line node/no-deprecated-api
 import { resolve as resolveURL } from 'url'
 import * as zlib from 'zlib'
-import Stream, {PassThrough, pipeline as pump} from 'stream';
-import dataURIToBuffer from 'data-uri-to-buffer';
+import Stream, { PassThrough, pipeline as pump } from 'stream'
+import dataURIToBuffer from 'data-uri-to-buffer'
 
-import Body, {writeToStream, getTotalBytes} from './body';
-import Response from './response';
-import Headers, {createHeadersLenient} from './headers';
-import Request, {getNodeRequestOptions} from './request';
-import FetchError from './errors/fetch-error';
-import AbortError from './errors/abort-error';
+import Body, { writeToStream, getTotalBytes } from './body'
+import Response from './response'
+import Headers, { createHeadersLenient } from './headers'
+import Request, { getNodeRequestOptions } from './request'
+import FetchError from './errors/fetch-error'
+import AbortError from './errors/abort-error'
 
 import debug from 'debug'
 
 const log = debug('server')
 
 const electron = require('electron')
-
-
 
 const isReady = (!electron || electron.app.isReady())
   ? Promise.resolve()
@@ -36,21 +34,21 @@ const isReady = (!electron || electron.app.isReady())
  * @param {Object} [opts] Fetch options
  * @return {Promise}
  */
-export default function fetch(url, opts = {}) {
+export default function fetch (url, opts = {}) {
   // Regex for data uri
-  const dataUriRegex = /^\s*data:([a-z]+\/[a-z]+(;[a-z-]+=[a-z-]+)?)?(;base64)?,[\w!$&',()*+;=\-.~:@/?%\s]*\s*$/i;
+  const dataUriRegex = /^\s*data:([a-z]+\/[a-z]+(;[a-z-]+=[a-z-]+)?)?(;base64)?,[\w!$&',()*+;=\-.~:@/?%\s]*\s*$/i
 
   // If valid data uri
   if (dataUriRegex.test(url)) {
-    const data = dataURIToBuffer(url);
-    const res = new Response(data, { headers: { 'Content-Type': data.type } });
-    return Promise.resolve(res);
+    const data = dataURIToBuffer(url)
+    const res = new Response(data, { headers: { 'Content-Type': data.type } })
+    return Promise.resolve(res)
   }
 
   // If invalid data uri
   if (url.toString().startsWith('data:')) {
-    const request = new Request(url, opts);
-    return Promise.reject(new FetchError(`[${request.method}] ${request.url} invalid URL`, 'system'));
+    const request = new Request(url, opts)
+    return Promise.reject(new FetchError(`[${request.method}] ${request.url} invalid URL`, 'system'))
   }
 
   // wrap http.request into fetch
@@ -73,7 +71,7 @@ export default function fetch(url, opts = {}) {
     options.session = opts.session || electron.session.defaultSession // we have to use a persistent session here, because of https://github.com/electron/electron/issues/13587
 
     delete options.signal
-    
+
     const { signal } = request
     let response = null
 
@@ -105,7 +103,7 @@ export default function fetch(url, opts = {}) {
       signal.addEventListener('abort', abortAndFinalize)
     }
 
-    function finalize() {
+    function finalize () {
       req.abort()
       if (signal) {
         signal.removeEventListener('abort', abortAndFinalize)
@@ -148,28 +146,25 @@ export default function fetch(url, opts = {}) {
       reject(new FetchError(`request to ${request.url} failed, reason: ${err.message}`, 'system', err))
     })
 
-    let redirect_status = request.status;
-    let redirect_method = request.method;
-    let redirect_url = request.url;
-    let redirect_headers = request.headers;
+    let redirect_status = request.status
+    let redirect_method = request.method
+    const redirect_url = request.url
+    let redirect_headers = request.headers
     req.on('redirect', (statusCode, method, redirectUrl, responseHeaders) => {
-      const headers = createHeadersLenient(responseHeaders);
+      const headers = createHeadersLenient(responseHeaders)
 
-      redirect_status = statusCode;
-      redirect_method = method;
-      redirect_headers = headers;
-
+      redirect_status = statusCode
+      redirect_method = method
+      redirect_headers = headers
     })
-
 
     req.on('response', res => {
       clearTimeout(reqTimeout)
 
-
-      let headers = createHeadersLenient(res.headers);
+      let headers = createHeadersLenient(res.headers)
 
       // HTTP fetch step 5.2
-      const location = redirect_headers.get('Location');
+      const location = redirect_headers.get('Location')
 
       // Prepare response
       res.once('end', () => {
@@ -180,50 +175,46 @@ export default function fetch(url, opts = {}) {
 
       // HTTP fetch step 5
       if (fetch.isRedirect(redirect_status)) {
-
-
-
         // HTTP fetch step 5.3
-        const locationURL = location === null ? null : resolveURL(request.url, location);
-
+        const locationURL = location === null ? null : resolveURL(request.url, location)
 
         // HTTP fetch step 5.5
         switch (request.redirect) {
           case 'error':
-            reject(new FetchError(`uri requested responds with a redirect, redirect mode is set to error: ${request.url}`, 'no-redirect'));
-            finalize();
-            return;
+            reject(new FetchError(`uri requested responds with a redirect, redirect mode is set to error: ${request.url}`, 'no-redirect'))
+            finalize()
+            return
           case 'manual':
             // Node-fetch-specific step: make manual redirect a bit easier to use by setting the Location header value to the resolved URL.
             if (locationURL !== null) {
               // Handle corrupted header
               try {
-                if(location) {
-                  redirect_headers.set('Location', locationURL);
-                  headers = redirect_headers;
+                if (location) {
+                  redirect_headers.set('Location', locationURL)
+                  headers = redirect_headers
                 }
               } catch (error) {
                 // istanbul ignore next: nodejs server prevent invalid response headers, we can't test this through normal request
-                reject(error);
+                reject(error)
               }
             }
 
-            break;
+            break
           case 'follow': {
             // HTTP-redirect fetch step 2
             if (locationURL === null) {
-              break;
+              break
             }
 
             // HTTP-redirect fetch step 5
             if (request.counter >= request.follow) {
-              reject(new FetchError(`maximum redirect reached at: ${request.url}`, 'max-redirect'));
-              finalize();
-              return;
+              reject(new FetchError(`maximum redirect reached at: ${request.url}`, 'max-redirect'))
+              finalize()
+              return
             }
             if (!location) {
               reject(new FetchError(`redirect location header missing at: ${request.url}`, 'invalid-redirect'))
-              finalize();
+              finalize()
               return
             }
 
@@ -239,26 +230,26 @@ export default function fetch(url, opts = {}) {
               body: request.body,
               signal: request.signal,
               timeout: request.timeout
-            };
+            }
 
             // HTTP-redirect fetch step 9
             if (redirect_status !== 303 && request.body && getTotalBytes(request) === null) {
-              reject(new FetchError('Cannot follow redirect with body being a readable stream', 'unsupported-redirect'));
-              finalize();
-              return;
+              reject(new FetchError('Cannot follow redirect with body being a readable stream', 'unsupported-redirect'))
+              finalize()
+              return
             }
 
             // HTTP-redirect fetch step 11
-            if (redirect_status === 303 || ((redirect_status === 301 ||redirect_status === 302) && redirect_method === 'POST')) {
-              requestOptions.method = 'GET';
-              requestOptions.body = undefined;
-              requestOptions.headers.delete('content-length');
+            if (redirect_status === 303 || ((redirect_status === 301 || redirect_status === 302) && redirect_method === 'POST')) {
+              requestOptions.method = 'GET'
+              requestOptions.body = undefined
+              requestOptions.headers.delete('content-length')
             }
 
             // HTTP-redirect fetch step 15
-            resolve(fetch(new Request(locationURL, requestOptions)));
-            finalize();
-            return;
+            resolve(fetch(new Request(locationURL, requestOptions)))
+            finalize()
+            return
           }
 
           default:
@@ -266,29 +257,27 @@ export default function fetch(url, opts = {}) {
         }
       }
 
-			let body = pump(res, new PassThrough(), error => {
-				reject(error);
-			});
+      const body = pump(res, new PassThrough(), error => {
+        reject(error)
+      })
 
-
-			const responseOptions = {
-				url: request.url,
-				status: res.statusCode,
+      const responseOptions = {
+        url: request.url,
+        status: res.statusCode,
         statusText: res.statusMessage,
         headers: headers,
-				size: request.size,
-				timeout: request.timeout,
-				counter: request.counter,
-				highWaterMark: request.highWaterMark
-      };
+        size: request.size,
+        timeout: request.timeout,
+        counter: request.counter,
+        highWaterMark: request.highWaterMark
+      }
 
-      if(request.redirect == 'manual' && location) {
+      if (request.redirect == 'manual' && location) {
         responseOptions.status = redirect_status
       }
 
-
       // HTTP-network fetch step 12.1.1.3
-      const codings = headers.get('Content-Encoding');
+      const codings = headers.get('Content-Encoding')
 
       // HTTP-network fetch step 12.1.1.4: handle content codings
 
@@ -299,16 +288,14 @@ export default function fetch(url, opts = {}) {
       // 4. no content response (204)
       // 5. content not modified response (304)
       if (!request.compress || request.method === 'HEAD' || codings === null || res.statusCode === 204 || res.statusCode === 304) {
-        response = new Response(body, responseOptions);
-        resolve(response);
-        return;
+        response = new Response(body, responseOptions)
+        resolve(response)
+        return
       }
 
-      
       // Otherwise, use response as-is
-      response = new Response(body, responseOptions);
-      resolve(response);
-
+      response = new Response(body, responseOptions)
+      resolve(response)
     })
 
     writeToStream(req, request)

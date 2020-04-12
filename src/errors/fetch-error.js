@@ -21,8 +21,8 @@ const netErrorMap = {
   ERR_CONTENT_DECODING_INIT_FAILED: 'Z_DATA_ERROR'
 }
 export default class FetchError extends Error {
-	constructor(message, type, systemError) {
-		super(message);
+  constructor (message, type, systemError) {
+    super(message)
 
     const regex = /^.*net::(.*)/
     if (regex.test(message)) {
@@ -33,19 +33,17 @@ export default class FetchError extends Error {
     }
     this.message = message
     this.type = type
-		this.name = 'FetchError'
-		this[Symbol.toStringTag] = 'FetchError'
+    this.name = 'FetchError'
+    this[Symbol.toStringTag] = 'FetchError'
 
-  
-		// When err.type is `system`, err.erroredSysCall contains system error and err.code contains system error code
-		if (systemError) {
-			// eslint-disable-next-line no-multi-assign
-			this.code = this.errno = systemError.code;
-			this.erroredSysCall = systemError;
-		}
-  
+    // When err.type is `system`, err.erroredSysCall contains system error and err.code contains system error code
+    if (systemError) {
+      // eslint-disable-next-line no-multi-assign
+      this.code = this.errno = systemError.code
+      this.erroredSysCall = systemError
+    }
+
     // hide custom error implementation details from end-users
     Error.captureStackTrace(this, this.constructor)
-	}
+  }
 }
-
