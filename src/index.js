@@ -252,9 +252,12 @@ export default function fetch (url, opts = {}) {
         }
       }
 
-      const body = pump(res, new PassThrough(), error => {
-        reject(error)
-      })
+      // const body = pump(res, new PassThrough(), error => {
+      //   reject(error)
+      // })
+      let body = new PassThrough()
+      res.on('error', err => body.emit('error', err))
+      res.pipe(body)
 
       const responseOptions = {
         url: request.url,

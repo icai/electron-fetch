@@ -1,6 +1,6 @@
 {
   "name": "@w3cub/electron-fetch",
-  "version": "3.0.2",
+  "version": "3.0.3",
   "description": "A light-weight module that brings window.fetch to electron's background process",
   "main": "lib/index.js",
   "module": "lib/index.es.js",
@@ -79,6 +79,7 @@
     "xvfb-maybe": "^0.2.1"
   },
   "dependencies": {
+    "encoding": "^0.1.12",
     "data-uri-to-buffer": "^3.0.0",
     "fetch-blob": "^1.0.5"
   }
